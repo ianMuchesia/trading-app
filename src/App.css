@@ -39,3 +39,10 @@
 .read-the-docs {
   color: #888;
 }
+.delete-button{
+  visibility: hidden;
+  display: inline-block;
+}
+.table-row:hover .delete-button{
+  visibility: visible;
+}

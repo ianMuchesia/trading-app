@@ -1,45 +1,92 @@
-import React, {useState, useEffect} from 'react'
+import React, {useState, useEffect, useContext} from 'react'
+import finnhub from '../apis/finnhub'
+import {BsFillCaretDownFill, BsFillCaretUpFill } from 'react-icons/bs'
+import { WatchListContext } from '../context/WatchListContext'
+import { useNavigate } from 'react-router-dom'
 
 const StockList = () => {
-    const [stock , setSTock ]  = useState([])
-    const [watchList, setWatchList] = useState(["GOOGL", "MSFT", "AMZN"])
 
+    const navigate = useNavigate()
 
+    const {watchList, deleteStock } = useContext(WatchListContext)
+    
+    const [ stock, setStock]  =  useState([])
 
-    //there is a possibility when we use use=Effect our component gets unmounted 
+    
+   
+    const changeColor=(change)=>{
+        return change>0?"green-500":"red-500";
+    }
+    const renderIcon=(change)=>{
+        return change>0? <BsFillCaretUpFill/>:<BsFillCaretDownFill/>
+    }
     useEffect(()=>{
-      let isMounted = true;
-        const fetchData= async()=>{
-         
-            try
-            {
-              const responses = await Promise.all(watchList.map(stock=>{
-                return {responses:fetch(`https://finnhub.io/api/v1/quote?symbol=${stock}&token=${import.meta.env.VITE_API_KEY}`),
+        let isMounted = true;
+        const fetchData = async()=>{
+            try{
+                const responses = await Promise.all(watchList.map(stock=>{
+                    return finnhub.get('/quote',{
+                        params:{
+                            symbol: stock
+                        }
+                    })
+                }))
                 
-                   }
-              }))
-              /* const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=MSFT&token=${import.meta.env.VITE_API_KEY}`)
-            
-              console.log(data) */
-              const data = await Promise.all(responses.map(response=>{
-               return  response.responses
-              }))
-              console.log(data)
-             if(isMounted){
-                setSTock(data)
-              } 
+                const data = responses.map(response=>{
+                    return {
+                        data: response.data,
+                        symbol: response.config.params.symbol
+                    } 
+                })
+                console.log(data)
+                if(isMounted){
+                    setStock(data)
+                }
             }catch(error){
-              console.log(error.message)
+                console.log(error.message)
             }
-           
         }
-        //when use promise.all you provide a list of promise and it will try revolving all of them at once 
         fetchData()
-        return ()=>{isMounted=false}
-    },[])
-
+    },[watchList])
+    const handleStockSelect= (symbol)=>{
+        navigate(`detail/${symbol}`)
+    }
   return (
-    <div>StockList</div>
+    <div>
+        <table className='table-auto hover mt-5'>
+            <thead style={{color: "rgb(79,89,102)"}}>
+                <tr>
+                    <th scope='col'>Name</th>
+                    <th scope='col'>Last</th>
+                    <th scope='col'>Chg</th>
+                    <th scope='col'>chg%</th>
+                    <th scope='col'>High</th>
+                    <th scope='col'>Low</th>
+                    <th scope='col'>Open</th>
+                    <th scope='col'>Pclose</th>
+                </tr>
+            </thead>
+            <tbody>
+               {stock.map(stockData=>{
+                return(
+                    <tr onClick={()=>handleStockSelect(stockData.symbol)} className='table-row cursor-pointer' key={stockData.symbol}>
+                        <th scope='row'>{stockData.symbol}</th>
+                        <td>{stockData.data.c}</td>
+                        <td className={`text-${changeColor(stockData.data.d)}`}>{stockData.data.d} {renderIcon(stockData.data.d)}</td>
+
+                        <td className={`text-${changeColor(stockData.data.d)}`}>{stockData.data.dp}{renderIcon(stockData.data.d)}</td>
+                        <td>{stockData.data.h}</td>
+                        <td>{stockData.data.l}</td>
+                        <td>{stockData.data.pc}<button className='bg-red-500 inline-block ml-3 delete-button ' onClick={(e)=>{
+                            e.stopPropagation()
+                            deleteStock(stockData.symbol)
+                        }}>Delete</button></td>
+                    </tr>
+                )
+               })} 
+            </tbody>
+        </table>
+    </div>
   )
 }
 
